@@ -26,8 +26,11 @@ def parse_wordpress_xml(xml_file, max_items=15):
 
     posts = []
 
-    ns = {'content': 'http://purl.org/rss/1.0/modules/content/',
-          'wp': 'http://wordpress.org/export/1.2/'}
+    ns = {
+        'content': 'http://purl.org/rss/1.0/modules/content/',
+        'excerpt': 'http://wordpress.org/export/1.2/excerpt/',
+        'wp': 'http://wordpress.org/export/1.2/'
+    }
 
     for item in root.findall('.//item')[:max_items]:
         post = {}
@@ -42,6 +45,13 @@ def parse_wordpress_xml(xml_file, max_items=15):
         else:
             post['content'] = ''
 
+        # Extract excerpt
+        excerpt_encoded = item.find('.//excerpt:encoded', ns)
+        if excerpt_encoded is not None and excerpt_encoded.text is not None:
+            post['excerpt'] = clean_html(unescape(excerpt_encoded.text))
+        else:
+            post['excerpt'] = ''
+
         # Extract date created
         post['date_created'] = item.find('pubDate').text
 
@@ -49,7 +59,18 @@ def parse_wordpress_xml(xml_file, max_items=15):
         post_date_gmt = item.find('.//wp:post_date_gmt', ns)
         post['date_created_gmt'] = post_date_gmt.text if post_date_gmt is not None else ''
 
-        # Extract taxonomies (categories and tags)
+        # Extract post modified GMT and split into year, month, day
+        post_modified_gmt = item.find('.//wp:post_modified_gmt', ns)
+        if post_modified_gmt is not None and post_modified_gmt.text is not None:
+            post['anio'] = post_modified_gmt.text[:4]
+            post['mes'] = post_modified_gmt.text[5:7]
+            post['dia'] = post_modified_gmt.text[8:10]
+        else:
+            post['anio'] = ''
+            post['mes'] = ''
+            post['dia'] = ''
+
+        # # Extract taxonomies (categories and tags)
         # taxonomies = []
         # for category in item.findall('.//category[@domain="category"]'):
         #     taxonomies.append(category.text)
@@ -67,6 +88,14 @@ def parse_wordpress_xml(xml_file, max_items=15):
                 meta_value = postmeta.find('.//wp:meta_value', ns).text
                 post['idioma'] = meta_value
                 break
+
+        # Extract post ID
+        post_id = item.find('.//wp:post_id', ns)
+        post['_id'] = post_id.text if post_id is not None else ''
+
+        # Extract post slug
+        post_slug = item.find('.//wp:post_name', ns)
+        post['slug'] = post_slug.text if post_slug is not None else ''
 
         posts.append(post)
 
