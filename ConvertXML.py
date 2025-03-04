@@ -34,9 +34,24 @@ def parse_wordpress_xml(xml_file, max_items=15):
 
     for item in root.findall('.//item')[:max_items]:
         post = {}
+        
+		 # Extract post ID
+        post_id = item.find('.//wp:post_id', ns)
+        post['_id'] = post_id.text if post_id is not None else ''
 
         # Extract post title
         post['title'] = item.find('title').text
+        
+		 # Extract post modified GMT and split into year, month, day
+        post_modified_gmt = item.find('.//wp:post_modified_gmt', ns)
+        if post_modified_gmt is not None and post_modified_gmt.text is not None:
+            post['anio'] = post_modified_gmt.text[:4]
+            post['mes'] = post_modified_gmt.text[5:7]
+            post['dia'] = post_modified_gmt.text[8:10]
+        else:
+            post['anio'] = ''
+            post['mes'] = ''
+            post['dia'] = ''
 
         # Extract post content
         content_encoded = item.find('.//content:encoded', ns)
@@ -51,24 +66,6 @@ def parse_wordpress_xml(xml_file, max_items=15):
             post['excerpt'] = clean_html(unescape(excerpt_encoded.text))
         else:
             post['excerpt'] = ''
-
-        # Extract date created
-        post['date_created'] = item.find('pubDate').text
-
-        # Extract date created GMT
-        post_date_gmt = item.find('.//wp:post_date_gmt', ns)
-        post['date_created_gmt'] = post_date_gmt.text if post_date_gmt is not None else ''
-
-        # Extract post modified GMT and split into year, month, day
-        post_modified_gmt = item.find('.//wp:post_modified_gmt', ns)
-        if post_modified_gmt is not None and post_modified_gmt.text is not None:
-            post['anio'] = post_modified_gmt.text[:4]
-            post['mes'] = post_modified_gmt.text[5:7]
-            post['dia'] = post_modified_gmt.text[8:10]
-        else:
-            post['anio'] = ''
-            post['mes'] = ''
-            post['dia'] = ''
 
         # # Extract taxonomies (categories and tags)
         # taxonomies = []
@@ -88,10 +85,6 @@ def parse_wordpress_xml(xml_file, max_items=15):
                 meta_value = postmeta.find('.//wp:meta_value', ns).text
                 post['idioma'] = meta_value
                 break
-
-        # Extract post ID
-        post_id = item.find('.//wp:post_id', ns)
-        post['_id'] = post_id.text if post_id is not None else ''
 
         # Extract post slug
         post_slug = item.find('.//wp:post_name', ns)
@@ -117,7 +110,7 @@ def write_to_json(posts, output_file):
         json.dump(data, json_file, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    wordpress_xml_file = "Files/2007.xml"
+    wordpress_xml_file = "Files/2008.xml"
     output_json_file = "Convert/simple.json"
 
     parsed_posts = parse_wordpress_xml(wordpress_xml_file, max_items=15)
